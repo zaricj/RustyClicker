@@ -11,15 +11,18 @@ fn main() -> eframe::Result {
     let icon = eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon.png"))
         .expect("invalid icon.png");
 
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Rusty Clicker")
-            .with_icon(icon)
-            .with_inner_size([470.0, 350.0])
-            .with_min_inner_size([470.0, 350.0])
-            .with_resizable(false),
-        ..Default::default()
-    };
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title("Rusty Clicker")
+        .with_icon(icon)
+        .with_inner_size([470.0, 350.0])
+        .with_min_inner_size([470.0, 350.0])
+        .with_resizable(false);
+    // Restore last window position (saved by App::on_exit).
+    if let Some(pos) = config::Config::load().window_pos {
+        viewport = viewport.with_position(pos);
+    }
+
+    let options = eframe::NativeOptions { viewport, ..Default::default() };
     eframe::run_native(
         "Rusty Clicker",
         options,

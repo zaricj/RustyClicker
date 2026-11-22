@@ -105,19 +105,26 @@ pub struct Config {
     pub last_profile: String,
     pub hotkey: Hotkey,
     pub profiles: BTreeMap<String, Settings>,
+    /// Top-left of the window (logical points) when the app was last closed.
+    pub window_pos: Option<[f32; 2]>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         let mut profiles = BTreeMap::new();
         profiles.insert(DEFAULT_PROFILE.to_owned(), Settings::default());
-        Self { last_profile: DEFAULT_PROFILE.to_owned(), hotkey: Hotkey::default(), profiles }
+        Self {
+            last_profile: DEFAULT_PROFILE.to_owned(),
+            hotkey: Hotkey::default(),
+            profiles,
+            window_pos: None,
+        }
     }
 }
 
 impl Config {
     pub fn path() -> Option<PathBuf> {
-        dirs::config_dir().map(|d| d.join("autoclicker").join("config.json"))
+        dirs::config_dir().map(|d| d.join("rustyclicker").join("config.json"))
     }
 
     /// Loads the config; falls back to defaults if missing or corrupt.

@@ -29,6 +29,7 @@ pub struct App {
     picking: Option<Instant>,
     enigo: Option<Enigo>,
     status: String,
+    window_pos: Option<[f32; 2]>, // last known non-minimized position, saved on exit
 }
 
 impl App {
@@ -60,6 +61,7 @@ impl App {
             picking: None,
             enigo: None,
             status: String::new(),
+            window_pos: None,
         };
         match GlobalHotKeyManager::new() {
             Ok(m) => {
@@ -359,6 +361,25 @@ impl eframe::App for App {
             self.toggle(ctx);
         }
         self.update_picking(ctx);
+
+        // Track position; skip while minimized (Windows reports ~-32000 then).
+        ctx.input(|i| {
+            let vp = i.viewport();
+            if vp.minimized != Some(true)
+                && let Some(r) = vp.outer_rect
+            {
+                self.window_pos = Some([r.min.x, r.min.y]);
+            }
+        });
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        // Only the position is written: self.cfg mirrors disk, so unsaved
+        // profile edits (kept in self.cur) are not persisted by this.
+        if self.window_pos.is_some() && self.window_pos != self.cfg.window_pos {
+            self.cfg.window_pos = self.window_pos;
+            let _ = self.cfg.save();
+        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
