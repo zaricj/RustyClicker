@@ -30,6 +30,8 @@ pub struct App {
     enigo: Option<Enigo>,
     status: String,
     window_pos: Option<[f32; 2]>, // last known non-minimized position, saved on exit
+    trim_at: Option<Instant>,     // when to do the one-time post-startup memory trim
+    was_minimized: bool,
 }
 
 impl App {
@@ -62,6 +64,8 @@ impl App {
             enigo: None,
             status: String::new(),
             window_pos: None,
+            trim_at: Some(Instant::now() + Duration::from_secs(2)),
+            was_minimized: false,
         };
         match GlobalHotKeyManager::new() {
             Ok(m) => {
@@ -363,14 +367,30 @@ impl eframe::App for App {
         self.update_picking(ctx);
 
         // Track position; skip while minimized (Windows reports ~-32000 then).
-        ctx.input(|i| {
+        let minimized = ctx.input(|i| {
             let vp = i.viewport();
             if vp.minimized != Some(true)
                 && let Some(r) = vp.outer_rect
             {
                 self.window_pos = Some([r.min.x, r.min.y]);
             }
+            vp.minimized == Some(true)
         });
+
+        // Release memory that's only touched during startup (mostly OpenGL driver
+        // init) once the UI has settled, and again whenever the window is minimized.
+        match self.trim_at {
+            Some(at) if Instant::now() >= at => {
+                self.trim_at = None;
+                trim_working_set();
+            }
+            Some(at) => ctx.request_repaint_after(at - Instant::now()),
+            None => {}
+        }
+        if minimized && !self.was_minimized {
+            trim_working_set();
+        }
+        self.was_minimized = minimized;
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
@@ -452,3 +472,21 @@ fn fkey_code(n: u8) -> Code {
         _ => Code::F6,
     }
 }
+
+/// Ask Windows to page out memory the process isn't actively using. Pages that
+/// are needed again come back transparently; startup-only memory (GPU driver
+/// init, font loading) stays out, which is what Task Manager reports.
+#[cfg(windows)]
+fn trim_working_set() {
+    unsafe extern "system" {
+        fn GetCurrentProcess() -> isize;
+        fn SetProcessWorkingSetSize(process: isize, min: usize, max: usize) -> i32;
+    }
+    // (usize::MAX, usize::MAX) = "trim as much as possible" per the Win32 docs.
+    unsafe {
+        SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
+    }
+}
+
+#[cfg(not(windows))]
+fn trim_working_set() {}
