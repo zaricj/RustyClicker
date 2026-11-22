@@ -1,4 +1,14 @@
-# Rusty Clicker (Rust / egui)
+<p align="center">
+  <img src="assets/icon.png" width="96" alt="Pytrolio icon">
+</p>
+
+---
+
+<h1 align="center">Rusty Clicker </h1>
+
+<p align="center"> A cross-platform mouse auto clicker written in Rust</p>
+
+---
 
 # Building
 
@@ -19,4 +29,4 @@ The target folder for the release build: `target/release/rustyclicker`
 
 # Screenshot
 
-![App](docs\app.png)
+![App](.\docs\app.png)
